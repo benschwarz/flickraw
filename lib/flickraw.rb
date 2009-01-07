@@ -19,16 +19,21 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
+begin
+  require 'minigems'
+rescue LoadError
+  require 'rubygems'
+end
 require 'net/http'
+require 'open-uri'
 require 'md5'
 require 'json'
 require 'cgi'
 
 module FlickRaw
-  VERSION='0.5.1'
+  VERSION='0.5.1.1'
 
-  FLICKR_HOST='api.flickr.com'.freeze
+  FLICKR_HOST='http://api.flickr.com'.freeze
 
   # Path of flickr REST API
   REST_PATH='/services/rest/?'.freeze
@@ -145,7 +150,7 @@ module FlickRaw
     # Raises FailedResponse if the response status is _failed_.
     def call(req, args={})
       path = REST_PATH + build_args(args, req).collect { |a, v| "#{a}=#{v}" }.join('&')
-      http_response = Net::HTTP.start(FLICKR_HOST) { |http| http.get(path, 'User-Agent' => "Flickraw/#{VERSION}") }
+      http_response = open(FLICKR_HOST + path).read #Net::HTTP.start(FLICKR_HOST) { |http| http.get(path, 'User-Agent' => "Flickraw/#{VERSION}") }
       parse_response(http_response, req)
     end
 
@@ -187,7 +192,7 @@ module FlickRaw
 
     private
     def parse_response(response, req = nil)
-      json = JSON.load(response.body)
+      json = JSON.load(response)
       raise FailedResponse.new(json['message'], json['code'], req) if json.delete('stat') == 'fail'
       name, json = json.to_a.first if json.size == 1
 
@@ -225,7 +230,7 @@ module FlickRaw
       args.each {|k, v| full_args[k.to_sym] = v }
       full_args[:api_sig] = api_sig(full_args) if FlickRaw.shared_secret
 
-      'http://' + FLICKR_HOST + AUTH_PATH + full_args.collect { |a, v| "#{a}=#{v}" }.join('&')
+      FLICKR_HOST + AUTH_PATH + full_args.collect { |a, v| "#{a}=#{v}" }.join('&')
     end
 
     # Returns the signature of hsh. This is meant to be passed in the _api_sig_ parameter.
