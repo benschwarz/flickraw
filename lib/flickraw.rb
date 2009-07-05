@@ -25,7 +25,7 @@ rescue LoadError
   require 'rubygems'
 end
 require 'net/http'
-require 'open-uri'
+require 'restclient'
 require 'md5'
 require 'json'
 require 'cgi'
@@ -147,10 +147,15 @@ module FlickRaw
 
     # This is the central method. It does the actual request to the flickr server.
     #
-    # Raises FailedResponse if the response status is _failed_.
+    # Raises RestClient::Exception if the response status is _failed_.
     def call(req, args={})
+      opts = {
+        :user_agent       => "flickraw/#{VERSION}",
+        :accept_encoding  => "gzip"
+      }
+      
       path = REST_PATH + build_args(args, req).collect { |a, v| "#{a}=#{v}" }.join('&')
-      http_response = open(FLICKR_HOST + path).read #Net::HTTP.start(FLICKR_HOST) { |http| http.get(path, 'User-Agent' => "Flickraw/#{VERSION}") }
+      http_response = RestClient.get(FLICKR_HOST + path, opts)
       parse_response(http_response, req)
     end
 
